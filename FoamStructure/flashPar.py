@@ -352,8 +352,6 @@ def parms():
     #                            #
     ##############################
 
-    # TODO: Check if target radius can be set here
-    # I think it should be done in the 'layers' section
     p.sim_targetRadius(200.0e-04)
     p.sim_vacuumHeight(60.0e-04)
     p.sim_initGeom("slab")
