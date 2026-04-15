@@ -1,4 +1,6 @@
 *.png
 *.npz
 *.swp
+*.cn4
+*.ses
 __pycache__

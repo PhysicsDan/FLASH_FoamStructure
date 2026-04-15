@@ -17,7 +17,7 @@ import os
 #   trad     : initial radiation temperature [K]
 #   A        : atomic mass
 #   Z        : atomic number
-#   zMin     : minimum zbar (set 0.0 if not needed)
+#   zMin     : minimum zbar (some preionisation necessary for laser absorption)
 #   height   : layer thickness in y-direction [cm]
 #   radius   : layer radial extent [cm]
 #   eosType  : EOS type string ("eos_tab" or "eos_gam")
@@ -31,7 +31,7 @@ import os
 
 LAYERS = [
     {
-        "name": "targ",
+        "name": "tar1",
         "rho": 2.7,
         "tele": 290.11375,
         "tion": 290.11375,
@@ -51,26 +51,26 @@ LAYERS = [
         "opFileName": "al-imx-003.cn4",
     },
     # Example: uncomment to add a second layer
-    # {
-    #     "name": "tar2",
-    #     "rho": 1.0,
-    #     "tele": 290.11375,
-    #     "tion": 290.11375,
-    #     "trad": 290.11375,
-    #     "A": 12.011,
-    #     "Z": 6.0,
-    #     "zMin": 0.0,
-    #     "height": 10.0e-04,
-    #     "radius": 200.0e-04,
-    #     "eosType": "eos_tab",
-    #     "eosSubType": "ionmix4",
-    #     "eosFile": "c-imx-001.cn4",
-    #     "opAbsorb": "op_tabpa",
-    #     "opEmiss": "op_tabpe",
-    #     "opTrans": "op_tabro",
-    #     "opFileType": "ionmix4",
-    #     "opFileName": "c-imx-001.cn4",
-    # },
+    {
+        "name": "tar2",
+        "rho": 1.0,
+        "tele": 290.11375,
+        "tion": 290.11375,
+        "trad": 290.11375,
+        "A": 13,
+        "Z": 7,
+        "zMin": 0.0,
+        "height": 10.0e-04,
+        "radius": 200.0e-04,
+        "eosType": "eos_tab",
+        "eosSubType": "ionmix4",
+        "eosFile": "polystyrene-imx-001.cn4",
+        "opAbsorb": "op_tabpa",
+        "opEmiss": "op_tabpe",
+        "opTrans": "op_tabro",
+        "opFileType": "ionmix4",
+        "opFileName": "polystyrene-imx-001.cn4",
+    },
 ]
 
 #########################################
@@ -120,43 +120,44 @@ def _species_string():
 
 def setupArgs():
     args = [
-            '-auto',
-            '-2d',
-            '+cylindrical',
-            '-nxb=16',
-            '-nyb=16',
-            '+hdf5typeio',
-            _species_string(),
-            '+mtmmmt',
-            '+laser',
-            '+uhd3t',
-            '+mgd',
-            'mgd_meshgroups=6',
-            '+python'
-            ]
+        "-auto",
+        "-2d",
+        "+cylindrical",
+        "-nxb=16",  # cells per box
+        "-nyb=16",  # cells per box
+        "+hdf5typeio",
+        _species_string(),
+        "+mtmmmt",
+        "+laser",
+        "+uhd3t",
+        "+mgd",
+        "mgd_meshgroups=6",  # Modify this if using different OPAC tables
+        "+python",
+    ]
     return args
 
 
 def parms():
     import flash.parm as p
+
     p.run_comment("Laser Slab Example Simulation")
     p.log_file("lasslab.log")
     p.basenm("lasslab_")
 
-# This particular parfile is used as an example that is described in
-# detail in the users guide.
+    # This particular parfile is used as an example that is described in
+    # detail in the users guide.
 
-##########################
-#                        #
-#     I/O PARAMETERS     #
-#                        #
-##########################
+    ##########################
+    #                        #
+    #     I/O PARAMETERS     #
+    #                        #
+    ##########################
 
-### Checkpoint Options  ###
+    ### Checkpoint Options  ###
     p.checkpointFileIntervalTime(1.0)
     p.checkpointFileIntervalStep(1000)
 
-### Plot Options ###
+    ### Plot Options ###
     p.plotFileNumber(0)
     p.plotFileIntervalStep(100)
     p.plotFileIntervalTime(0.01e-09)
@@ -170,29 +171,30 @@ def parms():
     p.plot_var_8("cham")
 
     # Dynamically add plot vars for each layer species
+    # TODO: Check that I can have an unlimited number of plot variables
     plot_idx = 9
     for layer in LAYERS:
         getattr(p, f"plot_var_{plot_idx}")(layer["name"])
         plot_idx += 1
 
-### Restart Options ###
+    ### Restart Options ###
     p.restart(False)
     p.checkpointFileNumber(0)
 
-########################################
-#                                      #
-#     RADIATION/OPACITY PARAMETERS     #
-#                                      #
-########################################
+    ########################################
+    #                                      #
+    #     RADIATION/OPACITY PARAMETERS     #
+    #                                      #
+    ########################################
     p.rt_useMGD(True)
     p.rt_mgdNumGroups(6)
     p.rt_mgdBounds_1(1.0e-01)
-    p.rt_mgdBounds_2(1.0e+00)
-    p.rt_mgdBounds_3(1.0e+01)
-    p.rt_mgdBounds_4(1.0e+02)
-    p.rt_mgdBounds_5(1.0e+03)
-    p.rt_mgdBounds_6(1.0e+04)
-    p.rt_mgdBounds_7(1.0e+05)
+    p.rt_mgdBounds_2(1.0e00)
+    p.rt_mgdBounds_3(1.0e01)
+    p.rt_mgdBounds_4(1.0e02)
+    p.rt_mgdBounds_5(1.0e03)
+    p.rt_mgdBounds_6(1.0e04)
+    p.rt_mgdBounds_7(1.0e05)
     p.rt_mgdFlMode("fl_harmonic")
     p.rt_mgdFlCoef(1.0)
 
@@ -205,14 +207,14 @@ def parms():
 
     p.useOpacity(True)
 
-### SET CHAMBER (HELIUM) OPACITY OPTIONS ###
+    ### SET CHAMBER (HELIUM) OPACITY OPTIONS ###
     p.op_chamAbsorb(CHAMBER["opAbsorb"])
     p.op_chamEmiss(CHAMBER["opEmiss"])
     p.op_chamTrans(CHAMBER["opTrans"])
     p.op_chamFileType(CHAMBER["opFileType"])
     p.op_chamFileName(CHAMBER["opFileName"])
 
-### SET TARGET LAYER OPACITY OPTIONS ###
+    ### SET TARGET LAYER OPACITY OPTIONS ###
     for layer in LAYERS:
         name = layer["name"]
         getattr(p, f"op_{name}Absorb")(layer["opAbsorb"])
@@ -221,30 +223,28 @@ def parms():
         getattr(p, f"op_{name}FileType")(layer["opFileType"])
         getattr(p, f"op_{name}FileName")(layer["opFileName"])
 
-
-############################
-#                          #
-#     LASER PARAMETERS     #
-#                          #
-############################
+    ############################
+    #                          #
+    #     LASER PARAMETERS     #
+    #                          #
+    ############################
     p.useEnergyDeposition(True)
     p.ed_maxRayCount(10000)
     p.ed_gradOrder(2)
 
-# Activate 3D-in-2D ray trace:
+    # Activate 3D-in-2D ray trace:
     p.ed_laser3Din2D(True)
     p.ed_laser3Din2DwedgeAngle(0.1)
 
-
-### LASER IO OPTIONS ###
+    ### LASER IO OPTIONS ###
     p.ed_useLaserIO(True)
     p.ed_laserIOMaxNumberOfPositions(10000)
     p.ed_laserIOMaxNumberOfRays(128)
 
-### SETUP LASER PULSES ###
+    ### SETUP LASER PULSES ###
     p.ed_numberOfPulses(1)
 
-# Define Pulse 1:
+    # Define Pulse 1:
     p.ed_numberOfSections_1(4)
     p.ed_time_1_1(0.0)
     p.ed_time_1_2(0.1e-09)
@@ -252,14 +252,14 @@ def parms():
     p.ed_time_1_4(1.1e-09)
 
     p.ed_power_1_1(0.0)
-    p.ed_power_1_2(1.0e+09)
-    p.ed_power_1_3(1.0e+09)
+    p.ed_power_1_2(1.0e09)
+    p.ed_power_1_3(1.0e09)
     p.ed_power_1_4(0.0)
 
-### SETUP LASER BEAM ###
+    ### SETUP LASER BEAM ###
     p.ed_numberOfBeams(1)
 
-# Setup Gaussian Beam:
+    # Setup Gaussian Beam:
     p.ed_lensX_1(1000.0e-04)
     p.ed_lensY_1(0.0e-04)
     p.ed_lensZ_1(-1000.0e-04)
@@ -281,12 +281,11 @@ def parms():
     p.ed_semiAxisMajorTorsionAngle_1(0.0)
     p.ed_semiAxisMajorTorsionAxis_1("x")
 
-
-#################################
-#                               #
-#     CONDUCTION PARAMETERS     #
-#                               #
-#################################
+    #################################
+    #                               #
+    #     CONDUCTION PARAMETERS     #
+    #                               #
+    #################################
     p.useDiffuse(True)
     p.useConductivity(True)
     p.diff_useEleCond(True)
@@ -301,48 +300,45 @@ def parms():
     p.diff_eleZlBoundaryType("neumann")
     p.diff_eleZrBoundaryType("neumann")
 
-
-####################################
-#                                  #
-#     HEAT EXCHANGE PARAMETERS     #
-#                                  #
-####################################
+    ####################################
+    #                                  #
+    #     HEAT EXCHANGE PARAMETERS     #
+    #                                  #
+    ####################################
     p.useHeatexchange(True)
 
-
-##########################
-#                        #
-#     EOS PARAMETERS     #
-#                        #
-##########################
+    ##########################
+    #                        #
+    #     EOS PARAMETERS     #
+    #                        #
+    ##########################
     p.eosModeInit("dens_temp_gather")
     p.smallt(1.0)
     p.smallx(1.0e-99)
     p.eos_useLogTables(False)
 
-
-############################
-#                          #
-#     HYDRO PARAMETERS     #
-#                          #
-############################
+    ############################
+    #                          #
+    #     HYDRO PARAMETERS     #
+    #                          #
+    ############################
     p.useHydro(True)
 
-    p.order(3) # Interpolation order (first/second/third/fifth order)
-    p.slopeLimiter("minmod") # Slope limiters (minmod, mc, vanLeer, hybrid, limited)
-    p.LimitedSlopeBeta(1.) # Slope parameter for the "limited" slope by Toro
-    p.charLimiting(True) # Characteristic limiting vs. Primitive limiting
-    p.use_avisc(True) # use artificial viscosity (originally for PPM)
-    p.cvisc(0.1) # coefficient for artificial viscosity
-    p.use_flattening(False) # use flattening (dissipative) (originally for PPM)
-    p.use_steepening(False) # use contact steepening (originally for PPM)
-    p.use_upwindTVD(False) # use upwind biased TVD slope for PPM (need nguard=6)
-    p.RiemannSolver("hllc") # Roe, HLL, HLLC, LLF, Marquina, hybrid
-    p.entropy(False) # Entropy fix for the Roe solver
-    p.shockDetect(False) # Shock Detect for numerical stability
-    p.use_hybridOrder(True) # Enforce Riemann density jump
+    p.order(3)  # Interpolation order (first/second/third/fifth order)
+    p.slopeLimiter("minmod")  # Slope limiters (minmod, mc, vanLeer, hybrid, limited)
+    p.LimitedSlopeBeta(1.0)  # Slope parameter for the "limited" slope by Toro
+    p.charLimiting(True)  # Characteristic limiting vs. Primitive limiting
+    p.use_avisc(True)  # use artificial viscosity (originally for PPM)
+    p.cvisc(0.1)  # coefficient for artificial viscosity
+    p.use_flattening(False)  # use flattening (dissipative) (originally for PPM)
+    p.use_steepening(False)  # use contact steepening (originally for PPM)
+    p.use_upwindTVD(False)  # use upwind biased TVD slope for PPM (need nguard=6)
+    p.RiemannSolver("hllc")  # Roe, HLL, HLLC, LLF, Marquina, hybrid
+    p.entropy(False)  # Entropy fix for the Roe solver
+    p.shockDetect(False)  # Shock Detect for numerical stability
+    p.use_hybridOrder(True)  # Enforce Riemann density jump
 
-# Hydro boundary conditions:
+    # Hydro boundary conditions:
     p.xl_boundary_type("reflect")
     p.xr_boundary_type("outflow")
     p.yl_boundary_type("outflow")
@@ -350,13 +346,14 @@ def parms():
     p.zl_boundary_type("reflect")
     p.zr_boundary_type("reflect")
 
+    ##############################
+    #                            #
+    #     INITIAL CONDITIONS     #
+    #                            #
+    ##############################
 
-##############################
-#                            #
-#     INITIAL CONDITIONS     #
-#                            #
-##############################
-
+    # TODO: Check if target radius can be set here
+    # I think it should be done in the 'layers' section
     p.sim_targetRadius(200.0e-04)
     p.sim_vacuumHeight(60.0e-04)
     p.sim_initGeom("slab")
@@ -383,7 +380,7 @@ def parms():
         getattr(p, f"eos_{name}SubType")(layer["eosSubType"])
         getattr(p, f"eos_{name}TableFile")(layer["eosFile"])
 
-# Chamber material defaults set for Helium at pressure 1.6 mbar:
+    # Chamber material defaults set for Helium at pressure 1.6 mbar:
     p.sim_rhoCham(CHAMBER["rho"])
     p.sim_teleCham(CHAMBER["tele"])
     p.sim_tionCham(CHAMBER["tion"])
@@ -398,38 +395,36 @@ def parms():
     p.sim_customDensMap(CUSTOM_DENS_MAP)
     p.sim_densMapFile(CUSTOM_DENS_MAP_FILE)
 
-
-###########################
-#                         #
-#     TIME PARAMETERS     #
-#                         #
-###########################
+    ###########################
+    #                         #
+    #     TIME PARAMETERS     #
+    #                         #
+    ###########################
     p.tstep_change_factor(1.10)
     p.cfl(0.4)
-    p.dt_diff_factor(1.0e+100) # Disable diffusion dt
-    p.rt_dtFactor(1.0e+100)
-    p.hx_dtFactor(1.0e+100)
+    p.dt_diff_factor(1.0e100)  # Disable diffusion dt
+    p.rt_dtFactor(1.0e100)
+    p.hx_dtFactor(1.0e100)
     p.tmax(2.0e-09)
     p.dtmin(1.0e-16)
     p.dtinit(1.0e-15)
     p.dtmax(3.0e-09)
     p.nend(10000000)
 
-
-###########################
-#                         #
-#     MESH PARAMETERS     #
-#                         #
-###########################
+    ###########################
+    #                         #
+    #     MESH PARAMETERS     #
+    #                         #
+    ###########################
     p.geometry("cylindrical")
 
-# Domain size:
+    # Domain size:
     p.xmin(0.0)
     p.xmax(40.0e-04)
     p.ymin(0.0e-04)
     p.ymax(80.0e-04)
 
-# Total number of blocks:
+    # Total number of blocks:
     p.nblockx(1)
     p.nblocky(2)
 
