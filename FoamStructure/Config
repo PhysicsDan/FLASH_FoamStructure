@@ -58,9 +58,6 @@ PARAMETER sim_radSourceFWHM  REAL 1.e-9
 D sim_initGeom Use a spherical target if sphere, default to slab
 PARAMETER sim_initGeom STRING "slab" ["slab","sphere"]
 
-D sim_targetRadius The radius to use for the target (default for all layers)
-PARAMETER sim_targetRadius REAL 0.0050
-
 D sim_vacuumHeight The thickness of the vacuum region in front of the target
 PARAMETER sim_vacuumHeight REAL 0.0200
 
