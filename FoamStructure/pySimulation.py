@@ -23,7 +23,6 @@ class Simulation(pySimulation):
         eV2K = 11604.5221
 
         # ----- Geometry parameters -----
-        self.targetRadius = p.sim_targetRadius.getVal()  # I think this is not needed
         self.vacuumHeight = p.sim_vacuumHeight.getVal()
         self.smallX = p.smallx.getVal()
         self.initGeom = p.sim_initGeom.getVal()

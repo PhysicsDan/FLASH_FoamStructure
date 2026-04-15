@@ -352,7 +352,6 @@ def parms():
     #                            #
     ##############################
 
-    p.sim_targetRadius(200.0e-04)
     p.sim_vacuumHeight(60.0e-04)
     p.sim_initGeom("slab")
 
