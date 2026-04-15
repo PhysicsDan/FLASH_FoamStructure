@@ -8,7 +8,7 @@ import os
 # Define target layers as a list of dicts. Layers stack sequentially
 # in the y-direction: vacuum -> layer[0] -> layer[1] -> ...
 # The chamber (cham) species is always present as the background fill.
-#
+
 # Each layer dict MUST contain:
 #   name     : short species name (e.g. "tar1") - used in setup line
 #   rho      : initial density [g/cc]
