@@ -13,12 +13,12 @@ Run this BEFORE calling the FLASH setup script.
 import os
 import sys
 
-# Import LAYERS and CHAMBER from flashPar
+# Import LAYERS and CHAMBER from simConfig
 base_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, base_dir)
-from flashPar import CHAMBER, CUSTOM_DENS_MAP, LAYERS
+from simConfig import CHAMBER, CUSTOM_DENS_MAP, LAYERS
 
-print(f"[generateConfig] Generating Config using {base_dir}/flashPar.py")
+print(f"[generateConfig] Generating Config using {base_dir}/simConfig.py")
 
 
 def main():
@@ -78,6 +78,10 @@ def generate_config(output_path=None):
 
     for df in sorted(datafiles):
         lines.append(f"DATAFILES {df}")
+    lines.append("")
+
+    # Ensure simConfig.py is copied to the run directory
+    lines.append("DATAFILES simConfig.py")
     lines.append("")
 
     # ---- Runtime Parameters ----

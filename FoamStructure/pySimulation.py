@@ -32,6 +32,8 @@ class Simulation(pySimulation):
         self.layers = []
         for n in range(1, self.numLayers + 1):
             layer = {
+                # Some of these values don't need specified if using
+                # custom density map. Modify this to set default values i.e. 0.0
                 "rho": getattr(p, f"sim_rho_{n}").getVal(),
                 "tele": getattr(p, f"sim_tele_{n}").getVal(),
                 "tion": getattr(p, f"sim_tion_{n}").getVal(),
