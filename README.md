@@ -1,5 +1,5 @@
 # General FLASH info
-Note: view [this README](./LaserSlabFoam/README.md) for more info on the specific modifications to the LaserSlab setup.
+Note: view [this README](./FoamStructure/README.md) for more info on the specific modifications to the LaserSlab setup.
 
 
 Flash4.8 comes with a python wrapper which makes modifying the code much easier.
