@@ -1,4 +1,83 @@
-Goal
-Modify the basic laser slab code such that a foam like spatial distribution can be employed.
+This repo contains a modified version of the LaserSlab example provided with FLASH4.8. The `pySimulation.py` file has been modified such that it is possible to initialise any spatial density distribution of choice by reading in a numpy `.npz` file.
 
-With FLASH4.8 this can theoretically be achieved relatively easily by modifying the `pySimulation.py` file.
+TODO:
+- [X] 2D density structure from file
+- [ ] 3D density structure from file
+- [ ] Freeze motion of cells until the surrounding cells are heated to stop unphysical target expansion/homogenisation
+
+
+
+# Files
+## `simConfig.py`
+In this file you can define the target parameters (species, geometry, eos etc.). The geometry can be defined as a simple slab or by pointing to a numpy `.npz` file. More details in [Defining Targets](#defining-targets).
+
+Make sure this file is in your run directory (the same one as `flashPar.py`). Note currently it isn't copied by the setup script so you'll have to move it manually (TODO).
+
+# Usage
+Place this folder in
+```sh
+FLASH4.8/source/Simulation/SimulationMain/python/
+```
+
+Run this BEFORE calling the FLASH setup script.
+```sh
+python generateConfig.py
+```
+This will generate a `Config` using the `flashPar.py` file in the same directory.
+
+Then run the setup command
+```sh
+cd FLASH4.8
+./setup python/FoamStructure
+```
+As standard build the `flash4` binary with `cmake` and `make`
+```bash
+mkdir -p $HOME/Documents/Simulations/flash/flash_test
+cd $HOME/Documents/Simulations/flash/flash_test
+
+cmake $HOME/Documents/Simulations/FLASH4.8/object
+make -j 16
+```
+
+And launch the simulation with
+```sh
+mpirun -n 64 ./flash4
+```
+
+## Custom flashPar Parameters
+
+# Defining Targets
+
+## Simple multilayer slabs
+Define target layers as a list of dicts. Layers stack sequentially
+in the y-direction: vacuum -> layer[0] -> layer[1] -> ...
+The chamber (cham) species is always present as the background fill.
+```
+Each layer dict MUST contain:
+  name     : 4 char species name (e.g. "tar1")
+  rho      : initial density [g/cc]
+  tele     : initial electron temperature [K]
+  tion     : initial ion temperature [K]
+  trad     : initial radiation temperature [K]
+  A        : atomic mass
+  Z        : atomic number
+  zMin     : minimum zbar (necessary for laser absorption)
+  height   : layer thickness in y-direction [cm]
+  radius   : layer radial extent [cm]
+  eosType  : EOS type string ("eos_tab" or "eos_gam")
+  eosSubType: EOS sub-type string (e.g. "ionmix4")
+  eosFile  : EOS table filename
+  opAbsorb : opacity absorption model (e.g. "op_tabpa")
+  opEmiss  : opacity emission model (e.g. "op_tabpe")
+  opTrans  : opacity transport model (e.g. "op_tabro")
+  opFileType: opacity file type (e.g. "ionmix4")
+  opFileName: opacity table filename
+```
+See [simConfig](./simConfig.py) for an example of a two layer target
+
+## Custom density maps from numpy
+The density profile can also be read from a `numpy` `.npz` file by setting the following
+```python
+CUSTOM_DENS_MAP = True
+CUSTOM_DENS_MAP_FILE = "density_map.npz"
+```
