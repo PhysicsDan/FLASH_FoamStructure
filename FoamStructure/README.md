@@ -3,6 +3,7 @@ This repo contains a modified version of the LaserSlab example provided with FLA
 TODO:
 - [X] 2D density structure from file
 - [ ] 3D density structure from file
+- [ ] Check that EOS is correctly atributed to the correct layers when using a file to initialise density profile
 - [ ] Freeze motion of cells until the surrounding cells are heated to stop unphysical target expansion/homogenisation
 
 
@@ -76,7 +77,7 @@ Each layer dict MUST contain:
 See [simConfig](./simConfig.py) for an example of a two layer target
 
 ## Custom density maps from numpy
-The density profile can also be read from a `numpy` `.npz` file by setting the following
+The density profile can also be read from a `numpy` `.npz` file by setting the following variables in `simConfig.py`
 ```python
 CUSTOM_DENS_MAP = True
 CUSTOM_DENS_MAP_FILE = "density_map.npz"
