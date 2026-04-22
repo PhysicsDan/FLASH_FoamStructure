@@ -81,3 +81,16 @@ The density profile can also be read from a `numpy` `.npz` file by setting the f
 CUSTOM_DENS_MAP = True
 CUSTOM_DENS_MAP_FILE = "density_map.npz"
 ```
+
+### File Structure
+```
+   x       : 1D numpy array of x (radial) cell-centre coordinates [cm]
+   y       : 1D numpy array of y (axial) cell-centre coordinates [cm]
+   density : 2D nunpy array shape (len(x), len(y)) of density values [g/cc]
+   species : 2D numpy array shape (len(x), len(y)) of integer species indices
+             (0 = cham, 1 = first layer, 2 = second layer, ...)
+```
+To generate the `.npz` file from these arrays
+```python
+np.savez("density_map.npz", x=x, y=y, density=density, species=species)
+```
