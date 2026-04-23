@@ -9,8 +9,6 @@ from flash.constantsH import *
 from flash.FlashH import *
 from flash.Simulation_base import pySimulation
 
-# TODO ADD IN A FREEZE TO STOP THE TARGET PRE-EXPANDING UNPHYSICALLY
-
 # Species index convention:
 #   CHAM_SPEC = 1 (always the first species = chamber/background)
 #   Layer species = 2, 3, 4, ... (in order of LAYERS list)
@@ -75,6 +73,17 @@ class Simulation(pySimulation):
             self.densMap_tele = data["tele"] if "tele" in data else None
             self.densMap_tion = data["tion"] if "tion" in data else None
             self.densMap_trad = data["trad"] if "trad" in data else None
+
+        # ----- BDRY (freeze) parameters -----
+        self.useBdry = p.sim_useBdry.getVal()
+        if self.useBdry:
+            self.bdryTempThreshold = p.sim_bdryTempThreshold.getVal()
+            self.bdryUnfreezeDist = p.sim_bdryUnfreezeDist.getVal()
+            self.bdryUnfreezeDistSq = self.bdryUnfreezeDist**2
+            print(
+                f"[Simulation] BDRY enabled: threshold={self.bdryTempThreshold} K, "
+                f"search dist={self.bdryUnfreezeDist} cm"
+            )
 
         # ----- RadSlab parameters -----
         self.radSlab = p.sim_radSlab.getVal()
@@ -193,7 +202,6 @@ class Simulation(pySimulation):
         zz = np.array(block.zCoord)
 
         for i, j, k in np.ndindex(solnVec.shape[1:]):
-            # TODO: Check can this be sped up with a np.where or something like that?
             if self.customDensMap:
                 # --- Custom density map path ---
                 rho, species, tele, tion, trad = self._lookup_densmap(xx[i], yy[j])
@@ -234,6 +242,13 @@ class Simulation(pySimulation):
                     else:
                         solnVec[n, i, j, k] = self.smallX
 
+            # --- BDRY: freeze target cells, leave chamber active ---
+            if self.useBdry:
+                if species != CHAM_SPEC:
+                    solnVec[BDRY_VAR, i, j, k] = 1.0  # frozen
+                else:
+                    solnVec[BDRY_VAR, i, j, k] = -1.0  # active
+
             if NFACE_VARS > 0:
                 faceX = gr.Block(blockID, FACEX)
                 solnX = np.array(faceX, copy=False)
@@ -249,9 +264,133 @@ class Simulation(pySimulation):
                 for i, j, k in np.ndindex(solnZ.shape[1:]):
                     solnZ[MAG_FACE_VAR, i, j, k] = 0.0
 
+    # ------------------------------------------------------------------
+    #  BDRY unfreezing logic
+    # ------------------------------------------------------------------
+
+    def _bdry_unfreeze(self):
+        """Unfreeze target cells whose unfrozen neighbours are hot.
+
+        Strategy (two-pass, vectorised per block):
+          Pass 1 - scan every leaf block, collect (x,y[,z]) positions of
+                   all cells that are UNFROZEN (bdry < 0) AND whose Tele
+                   exceeds the threshold.  Also record which blocks still
+                   contain frozen cells.
+          Pass 2 - for each block that has frozen cells, compute the
+                   squared distance from every frozen cell to every hot
+                   cell found in pass 1.  If any hot cell falls within
+                   bdryUnfreezeDist, flip the frozen cell to active.
+
+        Optimisations:
+          * Blocks with no frozen cells are skipped entirely in pass 2.
+          * Blocks with no hot cells contribute nothing to pass 1 cost.
+          * If there are zero hot cells globally, return immediately.
+          * Distance uses squared comparisons (avoids sqrt).
+          * Frozen-cell positions and hot-cell positions are handled as
+            contiguous numpy arrays for vectorised distance computation.
+        """
+        nblks = grid.getLocalNumBlks()
+        if nblks == 0:
+            return
+
+        d2_thresh = self.bdryUnfreezeDistSq
+        is_3t = "FLASH_UHD_3T" in globals()
+
+        # ---- Pass 1: collect hot unfrozen positions & tag frozen blocks ----
+        hot_positions = []  # list of (x, y) or (x, y, z) arrays
+        frozen_block_ids = []  # blocks that still contain frozen cells
+
+        for lb in range(1, nblks + 1):
+            blk = grid.Block(lb)
+            sol = np.array(blk, copy=False)
+            bdry = sol[BDRY_VAR]
+
+            # Quick skip: if every cell is already unfrozen, nothing to do
+            has_frozen = np.any(bdry > 0.0)
+            has_unfrozen = np.any(bdry < 0.0)
+
+            if has_frozen:
+                frozen_block_ids.append(lb)
+
+            if not has_unfrozen:
+                # No unfrozen cells here -> nothing hot can originate here
+                continue
+
+            tele = sol[TELE_VAR] if is_3t else sol[TEMP_VAR]
+
+            # Mask: unfrozen AND above threshold
+            hot_mask = (bdry < 0.0) & (tele > self.bdryTempThreshold)
+            if not np.any(hot_mask):
+                continue
+
+            xx = np.array(blk.xCoord)
+            yy = np.array(blk.yCoord)
+
+            # Build coordinate arrays for hot cells (vectorised)
+            hot_idx = np.argwhere(hot_mask)  # shape (N, 3) -> (i, j, k)
+            hx = xx[hot_idx[:, 0]]
+            hy = yy[hot_idx[:, 1]]
+            if NDIM >= 3:
+                zz = np.array(blk.zCoord)
+                hz = zz[hot_idx[:, 2]]
+                hot_positions.append(np.column_stack([hx, hy, hz]))
+            else:
+                hot_positions.append(np.column_stack([hx, hy]))
+
+        # Early exit if nothing is hot or nothing is frozen
+        if not hot_positions or not frozen_block_ids:
+            return
+
+        # Concatenate all hot cell positions into one array
+        hot_pos = np.concatenate(hot_positions, axis=0)  # (N_hot, 2 or 3)
+
+        # ---- Pass 2: unfreeze frozen cells near hot cells ----
+        for lb in frozen_block_ids:
+            blk = grid.Block(lb)
+            sol = np.array(blk, copy=False)
+            bdry = sol[BDRY_VAR]
+
+            frozen_mask = bdry > 0.0
+            if not np.any(frozen_mask):
+                continue
+
+            xx = np.array(blk.xCoord)
+            yy = np.array(blk.yCoord)
+
+            frozen_idx = np.argwhere(frozen_mask)  # (N_frozen, 3)
+            fx = xx[frozen_idx[:, 0]]
+            fy = yy[frozen_idx[:, 1]]
+            if NDIM >= 3:
+                zz = np.array(blk.zCoord)
+                fz = zz[frozen_idx[:, 2]]
+                frozen_pos = np.column_stack([fx, fy, fz])
+            else:
+                frozen_pos = np.column_stack([fx, fy])
+
+            # Vectorised squared-distance: (N_frozen, N_hot)
+            # diff[a, b, :] = frozen_pos[a] - hot_pos[b]
+            diff = frozen_pos[:, np.newaxis, :] - hot_pos[np.newaxis, :, :]
+            dist_sq = np.sum(diff * diff, axis=2)
+
+            # Which frozen cells have at least one hot neighbour within range?
+            unfreeze = np.any(dist_sq <= d2_thresh, axis=1)
+
+            # Apply unfreezing
+            for m in np.where(unfreeze)[0]:
+                fi, fj, fk = frozen_idx[m]
+                sol[BDRY_VAR, fi, fj, fk] = -1.0
+
+    # ------------------------------------------------------------------
+    #  Per-timestep evolution adjustment
+    # ------------------------------------------------------------------
+
     def adjustEvolution(self):
 
-        # For RADSLAB only
+        # --- BDRY unfreeze check ---
+        if self.useBdry:
+            self._bdry_unfreeze()
+
+        # --- RadSlab radiation source BC ---
         if self.radSlab:
             stime = dr.simTime()
             if stime < self.radSourceStart or stime >= self.radSourceStop:
@@ -283,5 +422,3 @@ class Simulation(pySimulation):
                         rt.mgdSetBC(ig=n, f=f, bcType=DIRICHLET, bcValue=urad[n])
                         for n in range(self.nG)
                     ]
-        else:
-            return

@@ -37,7 +37,15 @@ def setupArgs():
 def parms():
     import flash.parm as p
 
-    from simConfig import CHAMBER, CUSTOM_DENS_MAP, CUSTOM_DENS_MAP_FILE, LAYERS
+    from simConfig import (
+        BDRY_TEMP_THRESHOLD,
+        BDRY_UNFREEZE_DIST,
+        CHAMBER,
+        CUSTOM_DENS_MAP,
+        CUSTOM_DENS_MAP_FILE,
+        LAYERS,
+        USE_BDRY,
+    )
 
     p.run_comment("Laser Slab Example Simulation")
     p.log_file("lasslab.log")
@@ -290,6 +298,11 @@ def parms():
     # Custom density map parameters
     p.sim_customDensMap(CUSTOM_DENS_MAP)
     p.sim_densMapFile(CUSTOM_DENS_MAP_FILE)
+
+    # BDRY (freeze) parameters
+    p.sim_useBdry(USE_BDRY)
+    p.sim_bdryTempThreshold(BDRY_TEMP_THRESHOLD)
+    p.sim_bdryUnfreezeDist(BDRY_UNFREEZE_DIST)
 
     ###########################
     #                         #

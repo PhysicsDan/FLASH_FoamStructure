@@ -107,3 +107,24 @@ CHAMBER = {
 #             (0 = cham, 1 = first layer, 2 = second layer, ...)
 CUSTOM_DENS_MAP = False
 CUSTOM_DENS_MAP_FILE = "density_map.npz"
+
+#########################################
+#                                       #
+#     BDRY (FREEZE) OPTIONS             #
+#                                       #
+#########################################
+# When USE_BDRY is True, target cells are initialised as frozen
+# (BDRY_VAR = 1.0) and only unfrozen when a nearby *unfrozen* cell
+# exceeds BDRY_TEMP_THRESHOLD. This prevents unphysical pre-expansion
+# of solid targets before they are heated by the laser.
+#
+# BDRY_VAR =  1.0  -> frozen (rigid body, reflecting boundary)
+# BDRY_VAR = -1.0  -> active (normal fluid)
+#
+# The check uses a spatial search: for each frozen cell, if any
+# unfrozen cell within BDRY_UNFREEZE_DIST [cm] has electron
+# temperature above BDRY_TEMP_THRESHOLD [K], the frozen cell is
+# released. Unfreezing propagates inward from the heated surface.
+USE_BDRY = True
+BDRY_TEMP_THRESHOLD = 1000.0       # [K] electron temperature threshold
+BDRY_UNFREEZE_DIST  = 5.0e-04      # [cm] search radius for hot neighbours

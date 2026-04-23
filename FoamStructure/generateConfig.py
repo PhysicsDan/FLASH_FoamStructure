@@ -16,7 +16,14 @@ import sys
 # Import LAYERS and CHAMBER from simConfig
 base_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, base_dir)
-from simConfig import CHAMBER, CUSTOM_DENS_MAP, LAYERS
+from simConfig import (
+    BDRY_TEMP_THRESHOLD,
+    BDRY_UNFREEZE_DIST,
+    CHAMBER,
+    CUSTOM_DENS_MAP,
+    LAYERS,
+    USE_BDRY,
+)
 
 print(f"[generateConfig] Generating Config using {base_dir}/simConfig.py")
 
@@ -194,7 +201,28 @@ def generate_config(output_path=None):
     lines.append('PARAMETER sim_densMapFile STRING "density_map.npz"')
     lines.append("")
 
-    # Variable declaration
+    # BDRY (freeze) parameters
+    lines.append("# --- BDRY (target freeze/unfreeze) ---")
+    lines.append(
+        "D sim_useBdry If true, freeze target cells and unfreeze based on nearby temperature"
+    )
+    lines.append("PARAMETER sim_useBdry BOOLEAN False")
+    lines.append("")
+    lines.append(
+        "D sim_bdryTempThreshold Electron temperature threshold for unfreezing nearby cells [K]"
+    )
+    lines.append(f"PARAMETER sim_bdryTempThreshold REAL {BDRY_TEMP_THRESHOLD}")
+    lines.append("")
+    lines.append(
+        "D sim_bdryUnfreezeDist Distance to search for hot unfrozen neighbours [cm]"
+    )
+    lines.append(f"PARAMETER sim_bdryUnfreezeDist REAL {BDRY_UNFREEZE_DIST}")
+    lines.append("")
+
+    # Variable declarations
+    lines.append("D bdry_variable boundary marker: 1=frozen -1=active fluid")
+    lines.append("VARIABLE bdry")
+    lines.append("")
     lines.append(
         "D lase_variable saves (density of) the irradiated energy from EnergyDeposition unit"
     )

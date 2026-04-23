@@ -95,3 +95,21 @@ To generate the `.npz` file from these arrays
 ```python
 np.savez("density_map.npz", x=x, y=y, density=density, species=species)
 ```
+
+
+## Unphysical Target Expansion
+FLASH currently doesn't support negative pressures in the EOS, therefore, the plasma will expand unphysically even when not irradiated by a laser. One trick to prevent this is to use `BDRY_VAR` to freeze portions of the simulation domain until the surrounding cells heat up to a desired amount. When `BDRY_VAR=1` the cells are frozen and `BDRY_VAR=-1` the cells behave as a fluid.
+
+### Current Implementation
+When `USE_BDRY` is `True`, target cells are initialised as frozen (`BDRY_VAR = 1.0`) and only unfrozen when a nearby *unfrozen* cell exceeds `BDRY_TEMP_THRESHOLD`. This prevents unphysical pre-expansion of solid targets before they are heated by the laser.
+```
+BDRY_VAR =  1.0  -> frozen (rigid body, reflecting boundary)
+BDRY_VAR = -1.0  -> active (normal fluid)
+```
+The check uses a spatial search: for each frozen cell, if any unfrozen cell within `BDRY_UNFREEZE_DIST [cm]` has electron temperature above `BDRY_TEMP_THRESHOLD [K]`, the frozen cell is released. Unfreezing propagates inward from the heated surface.
+```
+USE_BDRY = True
+BDRY_TEMP_THRESHOLD = 1000.0       # [K] electron temperature threshold
+BDRY_UNFREEZE_DIST  = 5.0e-04      # [cm] search radius for hot neighbours
+```
+These values are set in [`simConfig.py`](./simConfig.py)
