@@ -24,6 +24,8 @@ DATAFILES al-imx-003.cn4
 DATAFILES he-imx-005.cn4
 DATAFILES polystyrene-imx-001.cn4
 
+DATAFILES simConfig.py
+
 ##########################
 #                        #
 #   RUNTIME PARAMETERS   #
@@ -121,6 +123,19 @@ PARAMETER sim_customDensMap BOOLEAN False
 
 D sim_densMapFile Path to the .npz density map file
 PARAMETER sim_densMapFile STRING "density_map.npz"
+
+# --- BDRY (target freeze/unfreeze) ---
+D sim_useBdry If true, freeze target cells and unfreeze based on nearby temperature
+PARAMETER sim_useBdry BOOLEAN False
+
+D sim_bdryTempThreshold Electron temperature threshold for unfreezing nearby cells [K]
+PARAMETER sim_bdryTempThreshold REAL 1000.0
+
+D sim_bdryUnfreezeDist Distance to search for hot unfrozen neighbours [cm]
+PARAMETER sim_bdryUnfreezeDist REAL 0.0005
+
+D bdry_variable boundary marker: 1=frozen -1=active fluid
+VARIABLE bdry
 
 D lase_variable saves (density of) the irradiated energy from EnergyDeposition unit
 VARIABLE lase TYPE: PER_VOLUME
