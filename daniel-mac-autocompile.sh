@@ -6,7 +6,7 @@ echo "Activating python env"
 source "$(brew --prefix)/Caskroom/miniconda/base/etc/profile.d/conda.sh"
 conda activate flash
 
-echo "Generating config file"
+echo "Generating Config and updating flashPar.py"
 cd "$FLASH_DIR/source/Simulation/SimulationMain/python/LaserSlabFoam/FoamStructure"
 python generateConfig.py
 

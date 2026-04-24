@@ -1,31 +1,35 @@
 #!/usr/bin/env python3
 """
-Generate the FLASH Config file dynamically based on the LAYERS list
-defined in flashPar.py.
+Generate the FLASH Config file and update flashPar.py with baked-in
+config values from the module-level definitions in flashPar.py.
 
-Usage:
-    python generateConfig.py            # writes Config in current directory
+Edit the LAYERS, CHAMBER, and other config variables at the top of
+flashPar.py, then run:
+
+    python generateConfig.py            # writes Config + updates flashPar.py
     python generateConfig.py /path/to/  # writes Config at specified path
 
 Run this BEFORE calling the FLASH setup script.
 """
 
 import os
+import re
 import sys
 
-# Import LAYERS and CHAMBER from simConfig
 base_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, base_dir)
-from simConfig import (
-    BDRY_TEMP_THRESHOLD,
-    BDRY_UNFREEZE_DIST,
-    CHAMBER,
-    CUSTOM_DENS_MAP,
-    LAYERS,
-    USE_BDRY,
-)
 
-print(f"[generateConfig] Generating Config using {base_dir}/simConfig.py")
+import flashPar
+
+LAYERS = flashPar.LAYERS
+CHAMBER = flashPar.CHAMBER
+CUSTOM_DENS_MAP = flashPar.CUSTOM_DENS_MAP
+CUSTOM_DENS_MAP_FILE = flashPar.CUSTOM_DENS_MAP_FILE
+USE_BDRY = flashPar.USE_BDRY
+BDRY_TEMP_THRESHOLD = flashPar.BDRY_TEMP_THRESHOLD
+BDRY_UNFREEZE_DIST = flashPar.BDRY_UNFREEZE_DIST
+
+print(f"[generateConfig] Reading config from {base_dir}/flashPar.py")
 
 
 def main():
@@ -35,11 +39,101 @@ def main():
         if os.path.isdir(outpath):
             outpath = os.path.join(outpath, "Config")
     generate_config(outpath)
+    update_flashpar()
 
+
+# ------------------------------------------------------------------
+#  Update flashPar.py in-place (sentinel blocks)
+# ------------------------------------------------------------------
+
+def _format_value(val, indent=4):
+    """Format a Python value as a string suitable for embedding in code."""
+    prefix = " " * indent
+    if isinstance(val, list):
+        if not val:
+            return "[]"
+        items = []
+        for item in val:
+            items.append(f"{prefix}    {_format_value(item, indent + 4)},")
+        return "[\n" + "\n".join(items) + f"\n{prefix}]"
+    elif isinstance(val, dict):
+        if not val:
+            return "{}"
+        items = []
+        for k, v in val.items():
+            items.append(f"{prefix}    {repr(k)}: {repr(v)},")
+        return "{\n" + "\n".join(items) + f"\n{prefix}}}"
+    else:
+        return repr(val)
+
+
+def _generate_setup_block():
+    """Generate the contents of the GENERATED_SETUP block."""
+    species_str = "species=" + ",".join(["cham"] + [l["name"] for l in LAYERS])
+    return f'    _SPECIES_STR = "{species_str}"'
+
+
+def _generate_parms_block():
+    """Generate the contents of the GENERATED_PARMS block."""
+    lines = []
+    lines.append(f"    LAYERS = {_format_value(LAYERS)}")
+    lines.append(f"    CHAMBER = {_format_value(CHAMBER)}")
+    lines.append(f"    CUSTOM_DENS_MAP = {repr(CUSTOM_DENS_MAP)}")
+    lines.append(f"    CUSTOM_DENS_MAP_FILE = {repr(CUSTOM_DENS_MAP_FILE)}")
+    lines.append(f"    USE_BDRY = {repr(USE_BDRY)}")
+    lines.append(f"    BDRY_TEMP_THRESHOLD = {repr(BDRY_TEMP_THRESHOLD)}")
+    lines.append(f"    BDRY_UNFREEZE_DIST = {repr(BDRY_UNFREEZE_DIST)}")
+    return "\n".join(lines)
+
+
+def _replace_between_sentinels(content, begin_tag, end_tag, replacement):
+    """Replace everything between sentinel lines (exclusive) in content."""
+    pattern = re.compile(
+        rf"(^[ \t]*#\s*{re.escape(begin_tag)}\s*$)"
+        rf"(.*?)"
+        rf"(^[ \t]*#\s*{re.escape(end_tag)}\s*$)",
+        re.MULTILINE | re.DOTALL,
+    )
+    match = pattern.search(content)
+    if not match:
+        print(f"  WARNING: sentinel '{begin_tag}' not found in flashPar.py")
+        return content
+
+    return content[: match.end(1)] + "\n" + replacement + "\n" + content[match.start(3) :]
+
+
+def update_flashpar():
+    """Update the auto-generated blocks in flashPar.py with current config."""
+    flashpar_path = os.path.join(base_dir, "flashPar.py")
+    with open(flashpar_path, "r") as f:
+        content = f.read()
+
+    content = _replace_between_sentinels(
+        content,
+        "<<< GENERATED_SETUP_BEGIN >>>",
+        "<<< GENERATED_SETUP_END >>>",
+        _generate_setup_block(),
+    )
+    content = _replace_between_sentinels(
+        content,
+        "<<< GENERATED_PARMS_BEGIN >>>",
+        "<<< GENERATED_PARMS_END >>>",
+        _generate_parms_block(),
+    )
+
+    with open(flashpar_path, "w") as f:
+        f.write(content)
+
+    print(f"[generateConfig] Updated flashPar.py sentinel blocks")
+
+
+# ------------------------------------------------------------------
+#  Generate the FLASH Config file
+# ------------------------------------------------------------------
 
 def generate_config(output_path=None):
     if output_path is None:
-        output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Config")
+        output_path = os.path.join(base_dir, "Config")
 
     lines = []
 
@@ -75,7 +169,6 @@ def generate_config(output_path=None):
     lines.append("")
 
     # ---- Data files ----
-    # Collect unique data files from all layers and chamber
     datafiles = set()
     datafiles.add(CHAMBER["eosFile"])
     datafiles.add(CHAMBER["opFileName"])
@@ -87,10 +180,6 @@ def generate_config(output_path=None):
         lines.append(f"DATAFILES {df}")
     lines.append("")
 
-    # Ensure simConfig.py is copied to the run directory
-    lines.append("DATAFILES simConfig.py")
-    lines.append("")
-
     # ---- Runtime Parameters ----
     lines.append("##########################")
     lines.append("#                        #")
@@ -99,7 +188,7 @@ def generate_config(output_path=None):
     lines.append("##########################")
     lines.append("")
 
-    # Radiation source parameters (unchanged)
+    # Radiation source parameters
     lines.append("## Radiation source runtime parameters:")
     lines.append("D sim_radSlab Switch to enable radiation temperature BC")
     lines.append("PARAMETER sim_radSlab BOOLEAN False")
@@ -201,7 +290,7 @@ def generate_config(output_path=None):
     lines.append('PARAMETER sim_densMapFile STRING "density_map.npz"')
     lines.append("")
 
-    # BDRY (freeze) parameters
+    # BDRY parameters
     lines.append("# --- BDRY (target freeze/unfreeze) ---")
     lines.append(
         "D sim_useBdry If true, freeze target cells and unfreeze based on nearby temperature"
@@ -229,7 +318,7 @@ def generate_config(output_path=None):
     lines.append("VARIABLE lase TYPE: PER_VOLUME")
     lines.append("")
 
-    # Thomson Scattering demo (unchanged)
+    # Thomson Scattering demo
     lines.append("USESETUPVARS ThscDemo")
     lines.append("IF ThscDemo")
     lines.append("")

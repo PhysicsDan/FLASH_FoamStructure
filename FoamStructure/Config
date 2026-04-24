@@ -24,8 +24,6 @@ DATAFILES al-imx-003.cn4
 DATAFILES he-imx-005.cn4
 DATAFILES polystyrene-imx-001.cn4
 
-DATAFILES simConfig.py
-
 ##########################
 #                        #
 #   RUNTIME PARAMETERS   #

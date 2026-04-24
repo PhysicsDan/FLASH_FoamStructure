@@ -4,15 +4,13 @@ TODO:
 - [X] 2D density structure from file
 - [ ] 3D density structure from file
 - [ ] Check that EOS is correctly atributed to the correct layers when using a file to initialise density profile
-- [ ] Freeze motion of cells until the surrounding cells are heated to stop unphysical target expansion/homogenisation
+- [X] Freeze motion of cells until the surrounding cells are heated to stop unphysical target expansion/homogenisation
 
 
 
 # Files
-## `simConfig.py`
-In this file you can define the target parameters (species, geometry, eos etc.). The geometry can be defined as a simple slab or by pointing to a numpy `.npz` file. More details in [Defining Targets](#defining-targets).
-
-Make sure this file is in your run directory (the same one as `flashPar.py`). Note currently it isn't copied by the setup script so you'll have to move it manually (TODO).
+## `flashPar.py`
+The main configuration file. Define target parameters (species, geometry, EOS, etc.) at the top of this file, then run `generateConfig.py` to generate the FLASH `Config` file. The geometry can be defined as a simple slab or by pointing to a numpy `.npz` file. More details in [Defining Targets](#defining-targets).
 
 # Usage
 Place this folder in
@@ -24,7 +22,7 @@ Run this BEFORE calling the FLASH setup script.
 ```sh
 python generateConfig.py
 ```
-This will generate a `Config` using the `flashPar.py` file in the same directory.
+This will generate a `Config` file and update the sentinel blocks inside `flashPar.py` using the config defined at the top of `flashPar.py`.
 
 Then run the setup command
 ```sh
@@ -48,6 +46,7 @@ mpirun -n 64 ./flash4
 ## Custom flashPar Parameters
 
 # Defining Targets
+Make all target definitions at the top of `flashPar.py`. You will see within the `params` function the data is duplicated. This is automatically generate by the `generateConfig.py` file and was the easist way I could automatically generate a `Config` file for any given simulation and not have awkaward issues with symlinked files generated during `flash4` compilation.
 
 ## Simple multilayer slabs
 Define target layers as a list of dicts. Layers stack sequentially
@@ -74,10 +73,10 @@ Each layer dict MUST contain:
   opFileType: opacity file type (e.g. "ionmix4")
   opFileName: opacity table filename
 ```
-See [simConfig](./simConfig.py) for an example of a two layer target
+See [`flashPar.py`](./flashPar.py) for an example of a two layer target
 
 ## Custom density maps from numpy
-The density profile can also be read from a `numpy` `.npz` file by setting the following variables in `simConfig.py`
+The density profile can also be read from a `numpy` `.npz` file by setting the following variables in `flashPar.py`
 ```python
 CUSTOM_DENS_MAP = True
 CUSTOM_DENS_MAP_FILE = "density_map.npz"
@@ -112,4 +111,4 @@ USE_BDRY = True
 BDRY_TEMP_THRESHOLD = 1000.0       # [K] electron temperature threshold
 BDRY_UNFREEZE_DIST  = 5.0e-04      # [cm] search radius for hot neighbours
 ```
-These values are set in [`simConfig.py`](./simConfig.py)
+These values are set in [`flashPar.py`](./flashPar.py)
