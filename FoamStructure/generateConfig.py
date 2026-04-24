@@ -46,6 +46,13 @@ def main():
 #  Update flashPar.py in-place (sentinel blocks)
 # ------------------------------------------------------------------
 
+def _dquote(val):
+    """repr() but with double quotes for strings."""
+    if isinstance(val, str):
+        return '"' + val.replace('\\', '\\\\').replace('"', '\\"') + '"'
+    return repr(val)
+
+
 def _format_value(val, indent=4):
     """Format a Python value as a string suitable for embedding in code."""
     prefix = " " * indent
@@ -61,10 +68,10 @@ def _format_value(val, indent=4):
             return "{}"
         items = []
         for k, v in val.items():
-            items.append(f"{prefix}    {repr(k)}: {repr(v)},")
+            items.append(f"{prefix}    {_dquote(k)}: {_dquote(v)},")
         return "{\n" + "\n".join(items) + f"\n{prefix}}}"
     else:
-        return repr(val)
+        return _dquote(val)
 
 
 def _generate_setup_block():
@@ -78,11 +85,11 @@ def _generate_parms_block():
     lines = []
     lines.append(f"    LAYERS = {_format_value(LAYERS)}")
     lines.append(f"    CHAMBER = {_format_value(CHAMBER)}")
-    lines.append(f"    CUSTOM_DENS_MAP = {repr(CUSTOM_DENS_MAP)}")
-    lines.append(f"    CUSTOM_DENS_MAP_FILE = {repr(CUSTOM_DENS_MAP_FILE)}")
-    lines.append(f"    USE_BDRY = {repr(USE_BDRY)}")
-    lines.append(f"    BDRY_TEMP_THRESHOLD = {repr(BDRY_TEMP_THRESHOLD)}")
-    lines.append(f"    BDRY_UNFREEZE_DIST = {repr(BDRY_UNFREEZE_DIST)}")
+    lines.append(f"    CUSTOM_DENS_MAP = {_dquote(CUSTOM_DENS_MAP)}")
+    lines.append(f"    CUSTOM_DENS_MAP_FILE = {_dquote(CUSTOM_DENS_MAP_FILE)}")
+    lines.append(f"    USE_BDRY = {_dquote(USE_BDRY)}")
+    lines.append(f"    BDRY_TEMP_THRESHOLD = {_dquote(BDRY_TEMP_THRESHOLD)}")
+    lines.append(f"    BDRY_UNFREEZE_DIST = {_dquote(BDRY_UNFREEZE_DIST)}")
     return "\n".join(lines)
 
 
