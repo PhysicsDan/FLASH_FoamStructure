@@ -9,6 +9,7 @@ Additional docs:
 - [PyFlash](https://flash.rochester.edu/site/flashcode/user_support/pyFlashDocs_py/index.html)
 - [Flash](https://flash.rochester.edu/site/flashcode/user_support.html)
 - [Hypre](https://hypre.readthedocs.io/en/latest/ch-intro.html)
+- Search the Mailing List: `site:"https://flash.rochester.edu/pipermail/flash-users/" laserslab`
 
 ## Building FLASH
 ### Dependencies
@@ -87,3 +88,8 @@ The folder should look something like
  pySimulation.py
  run.batch
 ```
+
+## TODO - Parallelisation
+FLASH can be parallised with mpi and openmp. I need to do some testing on what is the best option.
+
+See pg. 621 - `threadRayTrace=True` and `threadBlockList`

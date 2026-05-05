@@ -2,7 +2,7 @@ import os
 
 import flash.parm as p
 import flash.pyFlash4.Driver as dr
-import flash.pyFlash4.Grid as grid
+import flash.pyFlash4.Grid as gr
 import flash.pyFlash4.RadTrans as rt
 import numpy as np
 from flash.constantsH import *
@@ -195,7 +195,7 @@ class Simulation(pySimulation):
     # ------------------------------------------------------------------
 
     def initBlock(self, blockID):
-        block = grid.Block(blockID)
+        block = gr.Block(blockID)
         solnVec = np.array(block, copy=False)
         xx = np.array(block.xCoord)
         yy = np.array(block.yCoord)
@@ -289,7 +289,7 @@ class Simulation(pySimulation):
           * Frozen-cell positions and hot-cell positions are handled as
             contiguous numpy arrays for vectorised distance computation.
         """
-        nblks = grid.getLocalNumBlks()
+        nblks = gr.BlockList(LEAF).nBlocks
         if nblks == 0:
             return
 
@@ -301,7 +301,7 @@ class Simulation(pySimulation):
         frozen_block_ids = []  # blocks that still contain frozen cells
 
         for lb in range(1, nblks + 1):
-            blk = grid.Block(lb)
+            blk = gr.Block(lb)
             sol = np.array(blk, copy=False)
             bdry = sol[BDRY_VAR]
 
@@ -346,7 +346,7 @@ class Simulation(pySimulation):
 
         # ---- Pass 2: unfreeze frozen cells near hot cells ----
         for lb in frozen_block_ids:
-            blk = grid.Block(lb)
+            blk = gr.Block(lb)
             sol = np.array(blk, copy=False)
             bdry = sol[BDRY_VAR]
 
